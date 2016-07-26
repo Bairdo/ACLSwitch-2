@@ -23,6 +23,7 @@ from ryu.controller.handler import set_ev_cls
 # Application modules
 from l2switch.l2switch import L2Switch
 from aclswitch.aclswitch import ACLSwitch
+from capflow.CapFlow import CapFlow
 
 __author__ = "Jarrod N. Bakker"
 __status__ = "Development"
@@ -52,6 +53,7 @@ class Controller(app_manager.RyuApp):
         # Insert Ryu applications below
         self._register_app(L2Switch(self))
         self._register_app(ACLSwitch(self))
+        self._register_app(CapFlow(self))
 
     def get_ofpe_handlers(self):
         """Return the tuple of the OpenFlow protocol event handlers.
@@ -93,7 +95,7 @@ class Controller(app_manager.RyuApp):
     # Methods that send data to OpenFlow switches
 
     def add_flow(self, datapath, priority, match, inst, hard_timeout,
-                  table_id, buffer_id=None):
+                  table_id, buffer_id=None, in_port=None, msg=None, idle_timeout=0):
         """Reactively add a flow table entry to a switch's flow table.
 
         :param datapath: The switch to add the flow-table entry to.
@@ -113,16 +115,27 @@ class Controller(app_manager.RyuApp):
             mod = parser.OFPFlowMod(datapath=datapath,
                                     buffer_id=buffer_id,
                                     hard_timeout=hard_timeout,
+                                    idle_timeout=idle_timeout,
                                     priority=priority, match=match,
                                     flags=ofproto.OFPFF_SEND_FLOW_REM,
                                     instructions=inst, table_id=table_id)
         else:
             mod = parser.OFPFlowMod(datapath=datapath,
                                     hard_timeout=hard_timeout,
+                                    idle_timeout=idle_timeout,
                                     priority=priority, match=match,
                                     flags=ofproto.OFPFF_SEND_FLOW_REM,
                                     instructions=inst, table_id=table_id)
         self._send_msg(datapath, mod)
+        
+        if msg:
+            out = parser.OFPPacketOut(
+                    datapath=datapath,
+                    actions=[parser.OFPActionOutput(ofproto.OFPP_TABLE)],
+                    in_port=in_port,
+                    buffer_id=0xffffffff,
+                    data=msg.data)
+            datapath.send_msg(out)
 
     def remove_flow(self, datapath, parser, table, remove_type, priority,
                     match, out_port, out_group):

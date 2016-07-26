@@ -86,9 +86,9 @@ class ACLSwitch(ABCRyuApp):
         self._logging.addHandler(logging_config["handler"])
 
         # Set flow table numbers
-        self._table_id_blacklist = 0
-        self._table_id_whitelist = 1
-        self._table_id_next = 2
+        self._table_id_blacklist = 1
+        self._table_id_whitelist = 2
+        self._table_id_next = 3
 
         self._contr = contr
         self._supported = self._verify_contr_handlers()
